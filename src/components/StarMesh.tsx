@@ -1,68 +1,56 @@
 "use client";
 
 import { useRef, useState, useMemo } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useLoader } from "@react-three/fiber";
 import * as THREE from "three";
 import type { Star } from "@/store/universe";
 import { useUniverse } from "@/store/universe";
 
-function createGlowTexture(): THREE.Texture {
-  const size = 128;
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext("2d")!;
-  const gradient = ctx.createRadialGradient(
-    size / 2, size / 2, 0,
-    size / 2, size / 2, size / 2
-  );
-  gradient.addColorStop(0, "rgba(255,255,255,1)");
-  gradient.addColorStop(0.2, "rgba(255,255,255,0.6)");
-  gradient.addColorStop(0.5, "rgba(255,255,255,0.15)");
-  gradient.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, size, size);
-  const tex = new THREE.CanvasTexture(canvas);
-  return tex;
-}
+// HR도표 기반 색온도 매핑
+// 격한 답 → 뜨거운 파란 별, 차분한 답 → 따뜻한 금빛 별
+const STAR_TEXTURES = [
+  "/textures/lensflare/lensflare0.png",
+  "/textures/sprites/spark1.png",
+  "/textures/sprites/circle.png",
+];
 
-let glowTexture: THREE.Texture | null = null;
-function getGlowTexture() {
-  if (!glowTexture) glowTexture = createGlowTexture();
-  return glowTexture;
-}
-
-interface StarMeshProps {
-  star: Star;
-}
-
-export default function StarMesh({ star }: StarMeshProps) {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const glowRef = useRef<THREE.Sprite>(null);
+export default function StarMesh({ star }: { star: Star }) {
+  const groupRef = useRef<THREE.Group>(null);
+  const coreRef = useRef<THREE.Mesh>(null);
   const [hovered, setHovered] = useState(false);
   const selectStar = useUniverse((s) => s.selectStar);
 
+  const textures = useLoader(THREE.TextureLoader, STAR_TEXTURES);
   const birthTime = useRef(performance.now());
+
   const color = useMemo(() => new THREE.Color(star.color), [star.color]);
-  const texture = useMemo(() => getGlowTexture(), []);
+
+  // 별마다 다른 텍스처 조합 (4종 혼합에서 랜덤 선택)
+  const texIndex = useMemo(() => star.id % textures.length, [star.id, textures.length]);
+  const rotationSpeed = useMemo(() => 0.1 + (star.id % 7) * 0.05, [star.id]);
 
   useFrame(() => {
-    if (!meshRef.current) return;
+    if (!groupRef.current || !coreRef.current) return;
     const elapsed = (performance.now() - birthTime.current) / 1000;
 
-    const scale = Math.min(1, elapsed / 1.5);
-    const eased = 1 - Math.pow(1 - scale, 3);
-    meshRef.current.scale.setScalar(eased * star.size);
+    // 탄생 애니메이션: 느리게 나타남
+    const appear = Math.min(1, elapsed / 2.0);
+    const eased = 1 - Math.pow(1 - appear, 4);
 
-    const twinkle = 0.85 + Math.sin(elapsed * 2 + star.id) * 0.15;
-    if (glowRef.current) {
-      glowRef.current.scale.setScalar(eased * star.size * (hovered ? 8 : 5) * twinkle);
-    }
+    // 별 코어 크기
+    coreRef.current.scale.setScalar(eased * star.size);
+
+    // 반짝임: 별마다 다른 주기
+    const twinkle = 0.85 + Math.sin(elapsed * (1.5 + (star.id % 5) * 0.3)) * 0.15;
+    groupRef.current.scale.setScalar(eased * twinkle);
+
+    // 느린 회전
+    groupRef.current.rotation.z += rotationSpeed * 0.01;
   });
 
   return (
-    <group position={star.position}>
-      {/* Invisible larger hit area for easier clicking */}
+    <group position={star.position} ref={groupRef}>
+      {/* 히트 영역 (투명, 넓게) */}
       <mesh
         onClick={(e) => {
           e.stopPropagation();
@@ -77,21 +65,55 @@ export default function StarMesh({ star }: StarMeshProps) {
           document.body.style.cursor = "default";
         }}
       >
-        <sphereGeometry args={[star.size * 4, 16, 16]} />
+        <sphereGeometry args={[star.size * 5, 8, 8]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
-      <mesh ref={meshRef}>
+
+      {/* 코어 (밝은 중심) */}
+      <mesh ref={coreRef}>
         <sphereGeometry args={[1, 16, 16]} />
-        <meshBasicMaterial color={color} />
+        <meshBasicMaterial color={color} toneMapped={false} />
       </mesh>
-      <sprite ref={glowRef}>
+
+      {/* 주 글로우 (lensflare0 — 부드러운 빛 번짐) */}
+      <sprite scale={[star.size * (hovered ? 10 : 6), star.size * (hovered ? 10 : 6), 1]}>
         <spriteMaterial
-          map={texture}
+          map={textures[0]}
           color={color}
           transparent
-          opacity={hovered ? 0.7 : 0.4}
+          opacity={hovered ? 0.9 : 0.6}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
+          toneMapped={false}
+        />
+      </sprite>
+
+      {/* 보조 글로우 (spark/circle — 빛 가시) */}
+      <sprite
+        scale={[star.size * (hovered ? 14 : 8), star.size * (hovered ? 14 : 8), 1]}
+        rotation={[0, 0, star.id * 0.5]}
+      >
+        <spriteMaterial
+          map={textures[texIndex]}
+          color={color}
+          transparent
+          opacity={hovered ? 0.5 : 0.25}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </sprite>
+
+      {/* 외곽 미세 광망 */}
+      <sprite scale={[star.size * 16, star.size * 16, 1]}>
+        <spriteMaterial
+          map={textures[0]}
+          color={color}
+          transparent
+          opacity={0.08}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          toneMapped={false}
         />
       </sprite>
     </group>
