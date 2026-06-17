@@ -25,7 +25,7 @@ export default function BackgroundStars() {
 
     for (let i = 0; i < COUNT; i++) {
       // 구 표면에 균일 분포
-      const r = 40 + Math.random() * 60;
+      const r = 20 + Math.random() * 80;
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
       pos[i * 3] = r * Math.sin(phi) * Math.cos(theta);

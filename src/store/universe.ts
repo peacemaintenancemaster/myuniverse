@@ -28,11 +28,11 @@ function starColorFromAnswer(answer: string): string {
 }
 
 function randomStarPosition(index: number): [number, number, number] {
-  const angle = (index / QUESTIONS.length) * Math.PI * 2 + Math.random() * 0.5;
-  const radius = 2.5 + Math.random() * 1.5;
+  const angle = (index / QUESTIONS.length) * Math.PI * 2 + (Math.random() - 0.5) * 1.2;
+  const radius = 4 + Math.random() * 5;
   return [
     Math.cos(angle) * radius,
-    (Math.random() - 0.5) * 1.5,
+    (Math.random() - 0.5) * 2.5,
     Math.sin(angle) * radius,
   ];
 }
@@ -67,7 +67,7 @@ export const useUniverse = create<UniverseState>((set, get) => ({
       id: Date.now(),
       position,
       color: starColorFromAnswer(answer),
-      size: 0.15 + Math.random() * 0.1,
+      size: 0.25 + Math.random() * 0.15,
       answer,
       question: QUESTIONS[currentQuestionIndex],
       createdAt: Date.now(),

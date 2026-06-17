@@ -36,10 +36,10 @@ function Scene() {
       <OrbitControls
         enablePan={false}
         enableZoom={true}
-        minDistance={3}
-        maxDistance={15}
+        minDistance={5}
+        maxDistance={30}
         autoRotate
-        autoRotateSpeed={0.1}
+        autoRotateSpeed={0.08}
         dampingFactor={0.05}
         rotateSpeed={0.5}
       />
@@ -59,7 +59,7 @@ function Scene() {
 export default function Universe() {
   return (
     <Canvas
-      camera={{ position: [0, 1, 8], fov: 60 }}
+      camera={{ position: [0, 2, 14], fov: 60 }}
       className="!fixed inset-0"
       gl={{
         antialias: true,
