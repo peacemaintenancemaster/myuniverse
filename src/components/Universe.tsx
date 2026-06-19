@@ -9,16 +9,15 @@ import StarMesh from "./StarMesh";
 import { useUniverse } from "@/store/universe";
 
 // ── 항성 색온도 팔레트 (HR도표 근사) ────────────────────────────
-// 대부분 백~황, 소수 청/적. 균일하지 않게 분포시킨다.
 function sampleStarColor(): [number, number, number] {
   const roll = Math.random();
   let c: [number, number, number];
-  if (roll < 0.5) c = [1.0, 0.97, 0.92]; // 백색
-  else if (roll < 0.68) c = [0.78, 0.85, 1.0]; // 청백
-  else if (roll < 0.82) c = [1.0, 0.93, 0.78]; // 황백
-  else if (roll < 0.93) c = [1.0, 0.82, 0.6]; // 주황
-  else if (roll < 0.98) c = [1.0, 0.66, 0.52]; // 적
-  else c = [0.6, 0.72, 1.0]; // 청색 (드물고 뜨거움)
+  if (roll < 0.42) c = [1.0, 0.97, 0.92]; // 백색
+  else if (roll < 0.62) c = [0.7, 0.8, 1.0]; // 청백
+  else if (roll < 0.78) c = [1.0, 0.92, 0.74]; // 황백
+  else if (roll < 0.9) c = [1.0, 0.78, 0.55]; // 주황
+  else if (roll < 0.96) c = [1.0, 0.6, 0.46]; // 적
+  else c = [0.55, 0.68, 1.0]; // 청색 (드물고 뜨거움)
   return c;
 }
 
@@ -28,7 +27,7 @@ function StarField() {
   const matRef = useRef<THREE.ShaderMaterial>(null);
 
   const { positions, colors, sizes, phases, spikes, sharps, brights } = useMemo(() => {
-    const N = 3800;
+    const N = 4200;
     const pos = new Float32Array(N * 3);
     const col = new Float32Array(N * 3);
     const sz = new Float32Array(N);
@@ -38,7 +37,8 @@ function StarField() {
     const br = new Float32Array(N);
 
     for (let i = 0; i < N; i++) {
-      const r = 50 + Math.pow(Math.random(), 0.7) * 320;
+      // 넓은 구각 분포 → 줌/회전 시 시차(parallax)로 깊이감
+      const r = 30 + Math.pow(Math.random(), 0.6) * 360;
       const th = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
       pos[i * 3] = r * Math.sin(phi) * Math.cos(th);
@@ -53,35 +53,27 @@ function StarField() {
       ph[i] = Math.random();
 
       const tier = Math.random();
-      if (tier < 0.74) {
-        // 흐릿한 다수: 작고 날카로운 점, spike 없음
-        sz[i] = 0.6 + Math.random() * 1.1;
-        sh[i] = 110 + Math.random() * 50; // 날카로움
-        br[i] = 0.32 + Math.random() * 0.4;
+      if (tier < 0.58) {
+        // 흐릿한 다수: 작고 날카로운 점
+        sz[i] = 0.7 + Math.random() * 1.3;
+        sh[i] = 95 + Math.random() * 55;
+        br[i] = 0.5 + Math.random() * 0.5;
         sp[i] = 0;
-      } else if (tier < 0.93) {
-        // 중간
-        sz[i] = 1.6 + Math.random() * 1.8;
-        sh[i] = 55 + Math.random() * 45;
-        br[i] = 0.7 + Math.random() * 0.35;
-        sp[i] = Math.random() < 0.3 ? Math.random() * 0.3 : 0;
+      } else if (tier < 0.86) {
+        // 중간 — 또렷하고 색이 보임
+        sz[i] = 1.8 + Math.random() * 2.4;
+        sh[i] = 45 + Math.random() * 40;
+        br[i] = 1.0 + Math.random() * 0.5;
+        sp[i] = Math.random() < 0.35 ? Math.random() * 0.4 : 0;
       } else {
         // 드물고 밝은 별: 부드러운 코어 + 회절 십자
-        sz[i] = 3.6 + Math.random() * 6.5;
-        sh[i] = 20 + Math.random() * 26;
-        br[i] = 1.0 + Math.random() * 0.7;
-        sp[i] = 0.45 + Math.random() * 0.55;
+        sz[i] = 4.0 + Math.random() * 8.5;
+        sh[i] = 16 + Math.random() * 24;
+        br[i] = 1.5 + Math.random() * 1.1;
+        sp[i] = 0.5 + Math.random() * 0.55;
       }
     }
-    return {
-      positions: pos,
-      colors: col,
-      sizes: sz,
-      phases: ph,
-      spikes: sp,
-      sharps: sh,
-      brights: br,
-    };
+    return { positions: pos, colors: col, sizes: sz, phases: ph, spikes: sp, sharps: sh, brights: br };
   }, []);
 
   useFrame((_, delta) => {
@@ -127,7 +119,7 @@ function StarField() {
             float tw = 0.68 + 0.32 * sin(uTime * (0.6 + aPhase * 1.8) + aPhase * 6.2831);
             vTw = tw;
             vec4 mv = modelViewMatrix * vec4(position, 1.0);
-            gl_PointSize = max(1.0, aSize * (240.0 / -mv.z) * (0.85 + 0.15 * tw));
+            gl_PointSize = max(1.0, aSize * (300.0 / -mv.z) * (0.85 + 0.15 * tw));
             gl_Position = projectionMatrix * mv;
           }
         `}
@@ -155,29 +147,47 @@ function StarField() {
   );
 }
 
-// ── 깊이 그라데이션 배경 (사진 큐브맵 대체) ─────────────────────
+// ── 깊이 배경: 색을 가진 성운운(은하대) ─────────────────────────
 function Backdrop() {
   return (
     <mesh>
-      <sphereGeometry args={[460, 32, 32]} />
+      <sphereGeometry args={[480, 32, 32]} />
       <shaderMaterial
         side={THREE.BackSide}
         depthWrite={false}
         vertexShader={`
           varying vec3 vDir;
           void main() {
-            vDir = normalize(position);
+            vDir = position;
             gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
           }
         `}
         fragmentShader={`
           varying vec3 vDir;
-          void main() {
-            float band = exp(-pow(vDir.y * 2.1, 2.0));
-            vec3 base = vec3(0.004, 0.006, 0.014);
-            vec3 mid = vec3(0.022, 0.020, 0.040);
-            vec3 col = mix(base, mid, band);
-            col += vec3(0.018, 0.009, 0.013) * band * smoothstep(-0.5, 0.7, vDir.x);
+          float hash(vec3 p){ p = fract(p*0.3183099 + 0.1); p *= 17.0; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }
+          float noise(vec3 x){
+            vec3 i = floor(x); vec3 f = fract(x); f = f*f*(3.0-2.0*f);
+            return mix(mix(mix(hash(i+vec3(0,0,0)),hash(i+vec3(1,0,0)),f.x),
+                           mix(hash(i+vec3(0,1,0)),hash(i+vec3(1,1,0)),f.x),f.y),
+                       mix(mix(hash(i+vec3(0,0,1)),hash(i+vec3(1,0,1)),f.x),
+                           mix(hash(i+vec3(0,1,1)),hash(i+vec3(1,1,1)),f.x),f.y),f.z);
+          }
+          float fbm(vec3 p){ float a=0.5,s=0.0; for(int k=0;k<5;k++){ s+=a*noise(p); p*=2.03; a*=0.5; } return s; }
+          void main(){
+            vec3 d = normalize(vDir);
+            float band = exp(-pow(d.y * 1.6, 2.0));        // 은하대(수평 띠)
+            float n  = fbm(d * 2.6);
+            float n2 = fbm(d * 5.5 + 11.0);
+            float cloud = smoothstep(0.42, 0.95, n) * band;
+            float zone = fbm(d * 1.25 + 4.0);
+            vec3 blue   = vec3(0.05, 0.10, 0.24);
+            vec3 violet = vec3(0.16, 0.06, 0.22);
+            vec3 teal   = vec3(0.03, 0.14, 0.15);
+            vec3 neb = mix(blue, violet, smoothstep(0.30, 0.72, zone));
+            neb = mix(neb, teal, smoothstep(0.55, 0.92, n2) * 0.6);
+            vec3 base = vec3(0.005, 0.007, 0.017);
+            vec3 col = base + neb * cloud;
+            col += vec3(0.02, 0.018, 0.032) * band * 0.35;  // 옅은 먼지 안개
             gl_FragColor = vec4(col, 1.0);
           }
         `}
@@ -186,14 +196,13 @@ function Backdrop() {
   );
 }
 
-// ── 성운: 매우 희미하고 넓은 가스, 기록하면 흩어짐 ──────────────
-// (소프트 원형은 셰이더의 gl_PointCoord로 그리므로 텍스처가 필요 없다)
+// ── 전경 성운: 가까이 떠 있는 컬러 가스, 기록하면 흩어짐 ─────────
 function Nebula() {
   const dissolveTargets = useUniverse((s) => s.nebulaDissolveTargets);
   const meshRef = useRef<THREE.Points>(null);
 
   const { positions, colors, opacities, sizes, origPositions } = useMemo(() => {
-    const N = 600;
+    const N = 900;
     const pos = new Float32Array(N * 3);
     const col = new Float32Array(N * 3);
     const opa = new Float32Array(N);
@@ -203,9 +212,9 @@ function Nebula() {
     for (let i = 0; i < N; i++) {
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
-      const r = 3 + Math.pow(Math.random(), 0.6) * 15;
+      const r = 3 + Math.pow(Math.random(), 0.55) * 20;
       const x = r * Math.sin(phi) * Math.cos(theta);
-      const y = r * Math.sin(phi) * Math.sin(theta) * 0.2;
+      const y = r * Math.sin(phi) * Math.sin(theta) * 0.32;
       const z = r * Math.cos(phi);
 
       pos[i * 3] = x;
@@ -215,17 +224,19 @@ function Nebula() {
       orig[i * 3 + 1] = y;
       orig[i * 3 + 2] = z;
 
+      // 보라·자홍·청·청록 — 채도와 명도를 살려 컬러 가스로
       const c = Math.random();
       let color: THREE.Color;
-      if (c < 0.5) color = new THREE.Color().setHSL(0.65, 0.4, 0.045 + Math.random() * 0.03);
-      else if (c < 0.8) color = new THREE.Color().setHSL(0.75, 0.3, 0.045 + Math.random() * 0.03);
-      else color = new THREE.Color().setHSL(0.55, 0.35, 0.035 + Math.random() * 0.03);
+      if (c < 0.42) color = new THREE.Color().setHSL(0.72, 0.55, 0.07 + Math.random() * 0.05);
+      else if (c < 0.72) color = new THREE.Color().setHSL(0.84, 0.5, 0.07 + Math.random() * 0.05);
+      else if (c < 0.9) color = new THREE.Color().setHSL(0.6, 0.55, 0.06 + Math.random() * 0.05);
+      else color = new THREE.Color().setHSL(0.5, 0.5, 0.06 + Math.random() * 0.04);
       col[i * 3] = color.r;
       col[i * 3 + 1] = color.g;
       col[i * 3 + 2] = color.b;
 
-      sz[i] = 40 + Math.random() * 160;
-      opa[i] = 0.02 + Math.random() * 0.06;
+      sz[i] = 50 + Math.random() * 190;
+      opa[i] = 0.035 + Math.random() * 0.085;
     }
     return { positions: pos, colors: col, opacities: opa, sizes: sz, origPositions: orig };
   }, []);
@@ -239,7 +250,7 @@ function Nebula() {
     const opaAttr = geo.getAttribute("aOpacity") as THREE.BufferAttribute;
 
     for (const target of dissolveTargets) {
-      for (let i = 0; i < 600; i++) {
+      for (let i = 0; i < 900; i++) {
         if (dissolvedRef.current.has(i)) continue;
         const dx = origPositions[i * 3] - target[0];
         const dy = origPositions[i * 3 + 1] - target[1];
@@ -296,7 +307,7 @@ function Nebula() {
           varying float vOpacity;
           void main() {
             float d = length(gl_PointCoord - vec2(0.5));
-            float alpha = smoothstep(0.5, 0.1, d) * vOpacity;
+            float alpha = smoothstep(0.5, 0.05, d) * vOpacity;
             gl_FragColor = vec4(vColor, alpha);
           }
         `}
@@ -318,22 +329,23 @@ function Scene() {
         <StarMesh key={star.id} star={star} />
       ))}
       <OrbitControls
-        enablePan={false}
+        enablePan
         enableZoom
-        minDistance={5}
-        maxDistance={30}
+        minDistance={2.5}
+        maxDistance={75}
         autoRotate
-        autoRotateSpeed={0.08}
-        dampingFactor={0.05}
-        rotateSpeed={0.5}
+        autoRotateSpeed={0.12}
+        dampingFactor={0.06}
+        rotateSpeed={0.6}
+        panSpeed={0.6}
       />
       <EffectComposer>
         <Bloom
-          luminanceThreshold={0.42}
+          luminanceThreshold={0.4}
           luminanceSmoothing={0.8}
-          intensity={1.1}
+          intensity={1.2}
           mipmapBlur
-          radius={0.6}
+          radius={0.62}
         />
       </EffectComposer>
     </>
@@ -343,13 +355,13 @@ function Scene() {
 export default function Universe() {
   return (
     <Canvas
-      camera={{ position: [0, 2, 14], fov: 60 }}
+      camera={{ position: [0, 2, 17], fov: 65 }}
       className="!absolute inset-0"
       gl={{
         antialias: true,
         alpha: false,
         toneMapping: THREE.ACESFilmicToneMapping,
-        toneMappingExposure: 1.15,
+        toneMappingExposure: 1.2,
       }}
     >
       <Suspense fallback={null}>

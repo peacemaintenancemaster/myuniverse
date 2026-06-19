@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useUniverse } from "@/store/universe";
+import { useNavigation } from "@/store/navigation";
 
 function formatDate(ts: number): string {
   const d = new Date(ts);
@@ -13,7 +14,14 @@ function formatDate(ts: number): string {
 export default function JournalScreen() {
   const stars = useUniverse((s) => s.stars);
   const selectStar = useUniverse((s) => s.selectStar);
+  const setAnswering = useUniverse((s) => s.setAnswering);
+  const goTo = useNavigation((s) => s.goTo);
   const [query, setQuery] = useState("");
+
+  const startWriting = () => {
+    goTo("universe");
+    setAnswering(true);
+  };
 
   const entries = useMemo(() => {
     const sorted = [...stars].sort((a, b) => b.createdAt - a.createdAt);
@@ -38,11 +46,24 @@ export default function JournalScreen() {
 
       <div className="flex-1 overflow-y-auto px-6 pb-28">
         {entries.length === 0 ? (
-          <p className="mt-24 text-center text-sm leading-loose text-white/30" style={{ fontFamily: "serif" }}>
-            {stars.length === 0
-              ? "아직 성운 속에 있는 별이 많아요."
-              : "찾는 기록이 없어요."}
-          </p>
+          <div className="mt-24 flex flex-col items-center gap-8">
+            <p
+              className="text-center text-sm leading-loose text-white/30"
+              style={{ fontFamily: "serif" }}
+            >
+              {stars.length === 0
+                ? "아직 성운 속에 있는 별이 많아요."
+                : "찾는 기록이 없어요."}
+            </p>
+            {stars.length === 0 && (
+              <button
+                onClick={startWriting}
+                className="rounded-full border border-white/15 px-6 py-3 text-sm tracking-widest text-white/60 transition-colors hover:border-white/30 hover:text-white/80"
+              >
+                질문에 답하고 별 드러내기
+              </button>
+            )}
+          </div>
         ) : (
           <ul className="flex flex-col divide-y divide-white/5">
             {entries.map((star) => (
