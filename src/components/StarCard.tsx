@@ -14,7 +14,7 @@ export default function StarCard() {
 
   return (
     <div
-      className="fixed inset-0 flex items-center justify-center z-30"
+      className="absolute inset-0 flex items-center justify-center z-30"
       onClick={() => selectStar(null)}
     >
       <div

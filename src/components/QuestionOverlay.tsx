@@ -23,7 +23,7 @@ export default function QuestionOverlay() {
 
   if (birthMessage) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-30">
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
         <p
           className={`text-white/90 text-lg tracking-widest font-light transition-opacity duration-1000 ${fadeClass}`}
           style={{ fontFamily: "serif" }}
@@ -36,7 +36,7 @@ export default function QuestionOverlay() {
 
   if (isAnswering && !allDone) {
     return (
-      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-20">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-20">
         <div className="max-w-lg w-full mx-6 flex flex-col items-center gap-10">
           <p className="text-white/50 text-xs tracking-[0.3em] uppercase">
             성운을 흩어볼까요
@@ -51,6 +51,7 @@ export default function QuestionOverlay() {
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
             placeholder="여기에 답을 적어요..."
+            maxLength={2000}
             className="w-full bg-transparent border-b border-white/20 text-white/90 placeholder:text-white/30 resize-none focus:outline-none focus:border-white/40 text-base leading-relaxed py-3 min-h-[100px]"
             style={{ fontFamily: "serif" }}
             autoFocus
@@ -70,7 +71,10 @@ export default function QuestionOverlay() {
                 if (answer.trim()) {
                   addStar(answer.trim());
                   setAnswer("");
-                  setBirthMessage("별 하나가 드러났어요.");
+                  // 위기 감지 시엔 CrisisOverlay가 뜨므로 별 탄생 연출을 띄우지 않는다
+                  if (!useUniverse.getState().crisisActive) {
+                    setBirthMessage("별 하나가 드러났어요.");
+                  }
                 }
               }}
               disabled={!answer.trim()}

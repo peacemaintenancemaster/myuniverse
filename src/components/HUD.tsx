@@ -10,7 +10,7 @@ export default function HUD() {
 
   if (showIntro) {
     return (
-      <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-40">
+      <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-40">
         <div className="max-w-md mx-6 flex flex-col items-center gap-8 text-center">
           <h1 className="text-white/90 text-2xl tracking-widest font-light">
             Stellia
@@ -37,7 +37,7 @@ export default function HUD() {
   if (isAnswering) return null;
 
   return (
-    <div className="fixed bottom-0 inset-x-0 flex flex-col items-center gap-4 pb-10 pointer-events-none z-10">
+    <div className="absolute bottom-0 inset-x-0 flex flex-col items-center gap-4 pb-28 pointer-events-none z-10">
       {!allDone && (
         <button
           onClick={() => setAnswering(true)}
