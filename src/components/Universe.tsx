@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useRef, useMemo } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import * as THREE from "three";
@@ -27,7 +27,7 @@ function StarField() {
   const matRef = useRef<THREE.ShaderMaterial>(null);
 
   const { positions, colors, sizes, phases, spikes, sharps, brights } = useMemo(() => {
-    const N = 4200;
+    const N = 2800;
     const pos = new Float32Array(N * 3);
     const col = new Float32Array(N * 3);
     const sz = new Float32Array(N);
@@ -134,10 +134,10 @@ function StarField() {
             float r = length(p);
             float core = exp(-r * r * vSharp);
             float ax = abs(p.x), ay = abs(p.y);
-            float sh = exp(-ay * ay * 700.0) * (1.0 - smoothstep(0.0, 0.5, ax));
-            float sv = exp(-ax * ax * 700.0) * (1.0 - smoothstep(0.0, 0.5, ay));
+            float sh = exp(-ay * ay * 420.0) * (1.0 - smoothstep(0.0, 0.5, ax));
+            float sv = exp(-ax * ax * 420.0) * (1.0 - smoothstep(0.0, 0.5, ay));
             float spikes = (sh + sv) * vSpike;
-            float i = (core + spikes * 0.5) * vBright * vTw;
+            float i = (core + spikes * 0.9) * vBright * vTw;
             if (i < 0.004) discard;
             gl_FragColor = vec4(vColor * i, i);
           }
@@ -316,6 +316,46 @@ function Nebula() {
   );
 }
 
+// 새 별이 생기면 카메라가 그 별로 부드럽게 날아가 화면 중앙에 담는다.
+// "방금 내가 별을 만들었다"를 명확히 인지시키는 핵심 동작.
+function FocusOnNewStar() {
+  const camera = useThree((s) => s.camera);
+  const controls = useThree((s) => s.controls) as
+    | (THREE.EventDispatcher & { target: THREE.Vector3; autoRotate: boolean; update: () => void })
+    | null;
+  const lastId = useRef<number | null>(null);
+  const goal = useRef<{ cam: THREE.Vector3; target: THREE.Vector3 } | null>(null);
+
+  useFrame(() => {
+    if (!controls) return;
+    const stars = useUniverse.getState().stars;
+    const last = stars[stars.length - 1];
+
+    if (last && last.id !== lastId.current) {
+      lastId.current = last.id;
+      // 이번 세션에서 방금 만든 별만 따라간다 (복원된 옛 별은 제외)
+      if (Date.now() - last.createdAt < 5000) {
+        const sp = new THREE.Vector3(last.position[0], last.position[1], last.position[2]);
+        const dir = camera.position.clone().sub(sp).normalize();
+        goal.current = { target: sp, cam: sp.clone().add(dir.multiplyScalar(8)) };
+        controls.autoRotate = false;
+      }
+    }
+
+    if (goal.current) {
+      camera.position.lerp(goal.current.cam, 0.05);
+      controls.target.lerp(goal.current.target, 0.05);
+      controls.update();
+      if (camera.position.distanceTo(goal.current.cam) < 0.2) {
+        goal.current = null;
+        controls.autoRotate = true; // 다시 천천히 공전
+      }
+    }
+  });
+
+  return null;
+}
+
 function Scene() {
   const stars = useUniverse((s) => s.stars);
 
@@ -328,7 +368,9 @@ function Scene() {
       {stars.map((star) => (
         <StarMesh key={star.id} star={star} />
       ))}
+      <FocusOnNewStar />
       <OrbitControls
+        makeDefault
         enablePan
         enableZoom
         minDistance={2.5}
